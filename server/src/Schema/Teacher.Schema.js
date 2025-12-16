@@ -1,0 +1,112 @@
+import mongoose from "mongoose";
+
+const teacherSchema = new mongoose.Schema(
+  {
+    // 1. Teacher is a User (Authentication)
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true, // A user should only have one teacher profile
+    },
+
+    // 2. Teacher is an Employee (HR/Payroll)
+    employeeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Employee",
+      required: true,
+      unique: true, // One employee record per teacher
+    },
+
+    // 3. Professional Stats
+    experience: {
+      type: Number,
+      default: 0,
+    },
+    totalSubjects: {
+      type: Number,
+      default: 0,
+    },
+    totalStudents: {
+      type: Number,
+      default: 0,
+    },
+    
+    // Storing ratings as an array of objects is better than raw JSON for querying
+    ratings: [
+      {
+        studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student" },
+        rating: Number,
+        review: String,
+        date: { type: Date, default: Date.now },
+      },
+    ],
+
+    // 4. Status & Documents
+    documents: {
+      type: String, // URL to document storage
+      default: "",
+    },
+    availableToday: {
+      type: Boolean,
+      default: true,
+    },
+    profileComplete: {
+      type: Boolean,
+      default: false,
+    },
+    documentsUploaded: {
+      type: Boolean,
+      default: false,
+    },
+
+    // 5. Relationships (Previously separate SQL tables)
+    // Instead of 'teacher_branch' table, we use an array here
+    branches: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Branch",
+      },
+    ],
+
+    // Instead of 'teacher_routine' table
+    routines: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Routine",
+      },
+    ],
+
+    // Instead of 'teacher_students' table
+    students: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Student",
+      },
+    ],
+    
+    // Instead of 'teacher_attendance' table
+    // Note: If attendance grows indefinitely, keep this in a separate Attendance model 
+    // referencing the Teacher, rather than an array here.
+    attendanceRecords: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Attendance",
+      },
+    ],
+    ratings: [
+  {
+    studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true },
+    rating: { type: Number, min: 1, max: 5 },
+    review: String,
+    date: { type: Date, default: Date.now },
+  },
+],
+
+  },
+  { timestamps: true } // Automatically adds createdAt and updatedAt
+);
+
+const Teacher = mongoose.model("Teacher", teacherSchema);
+
+export default Teacher;
