@@ -1,22 +1,19 @@
-import React from 'react'
-import {Routes,Route} from 'react-router-dom';
-import Gateway from './Landing/Pages/Gateway';
-import Header from './Landing/Components/Header';
-import Footer from './Landing/Components/Footer';
-
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import Gateway from "./Pages/Landing/Gateway";
+import Header from "./Components/Header/Header";
+import Footer from "./Components/Footer/Footer";
 
 const App = () => {
   return (
     <div>
-      <Header/>
+      <Header />
       <Routes>
-        <Route path='/' element={<Gateway/>}/>
-
+        <Route path="/" element={<Gateway />} />
       </Routes>
-      <Footer/>
-
+      <Footer />
     </div>
-  )
-}
+  );
+};
 
-export default App
+export default App;
