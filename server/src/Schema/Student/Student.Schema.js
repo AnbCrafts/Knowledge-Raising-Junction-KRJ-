@@ -23,21 +23,10 @@ const StudentSchema = new mongoose.Schema(
     },
 
     // ---------- ACADEMIC ----------
-    academicYear: String, // e.g. 2024-2025
-    currentClassYear: String, // e.g. 10th, 12th, FY, SY
-
-    board: {
+    academicProfile: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Board",
+      ref: "AcademicProfile",
     },
-
-    previousAcademicDetails: [
-      {
-        year: String,
-        marks: Number,
-        percentage: Number,
-      },
-    ],
 
     // ---------- ORGANIZATION ----------
     branch: {
@@ -64,10 +53,12 @@ const StudentSchema = new mongoose.Schema(
       ref: "Attendance",
     },
 
-    leaveRef: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Leave",
-    }],
+    leaveRef: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Leave",
+      },
+    ],
 
     testRecords: [
       {
@@ -76,10 +67,12 @@ const StudentSchema = new mongoose.Schema(
       },
     ],
 
-    feeAccount: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Payment",
-    }],
+    feeAccount: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Payment",
+      },
+    ],
 
     // idCard: {
     //   type: mongoose.Schema.Types.ObjectId,
