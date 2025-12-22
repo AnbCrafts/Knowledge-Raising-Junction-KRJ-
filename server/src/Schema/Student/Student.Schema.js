@@ -33,22 +33,26 @@ const StudentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Branch",
     },
+    batch: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Batch",
+          },
 
     
 
-    assignedTeacher: {
+    assignedTeacher: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "Teacher",
-    },
+    }],
 
     joiningDate: Date,
     leavingDate: Date,
 
     // ---------- REFERENCES ----------
-    attendanceRef: {
+    attendanceRef: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "Attendance",
-    },
+    }],
 
     leaveRef: [
       {

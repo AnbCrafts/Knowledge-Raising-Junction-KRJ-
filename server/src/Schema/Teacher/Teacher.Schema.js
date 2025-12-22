@@ -62,10 +62,11 @@ const teacherSchema = new mongoose.Schema(
 
     // 5. Relationships (Previously separate SQL tables)
     // Instead of 'teacher_branch' table, we use an array here
-    branches: [
+    
+    batches: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Branch",
+        ref: "Batch",
       },
     ],
 
