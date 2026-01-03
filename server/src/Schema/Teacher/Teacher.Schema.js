@@ -107,12 +107,12 @@ const teacherSchema = new mongoose.Schema(
     // Instead of 'teacher_attendance' table
     // Note: If attendance grows indefinitely, keep this in a separate Attendance model 
     // referencing the Teacher, rather than an array here.
-    attendanceRecords: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Attendance",
-      },
-    ],
+    // attendanceRecords: [
+    //   {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: "Attendance",
+    //   },
+    // ],
     ratings: [
   {
     studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true },

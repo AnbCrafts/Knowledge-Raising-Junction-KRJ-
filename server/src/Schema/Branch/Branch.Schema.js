@@ -12,6 +12,12 @@ const BranchSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    branchCode:{
+      type: String,
+      required: true,
+      trim: true,
+      unique:true
+    },
 
     batches: [
       {
