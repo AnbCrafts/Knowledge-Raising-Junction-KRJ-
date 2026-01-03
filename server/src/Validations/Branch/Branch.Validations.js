@@ -28,7 +28,7 @@ export const name = Joi.string().trim().min(2).max(100).required().messages({
 export const address = Joi.string().trim().max(500).allow("").messages({
   "string.base": "Address must be a string",
   "string.max": "Address must not exceed 500 characters",
-});
+}); 
 
 /* ------------------ RELATIONSHIPS ------------------ */
 
@@ -59,3 +59,24 @@ export const isActive = booleanField;
 export const deletedAt = dateField.allow(null).messages({
   "date.base": "DeletedAt must be a valid date",
 });
+export const branchCode = Joi.string()
+  .trim()
+  .pattern(/^KRJ-\d{4}-[A-Z]{2,5}-\d{2}$/)
+  .messages({
+    "string.base": "Branch code must be a string",
+    "string.empty": "Branch code is required",
+    "string.pattern.base":
+      "Branch code must be in format KRJ-YYYY-ADD-XX (e.g. KRJ-2025-GOV-01)",
+  });
+export const areaCode = Joi.string()
+  .trim()
+  .uppercase()
+  .length(3)
+  .pattern(/^[A-Z]{3}$/)
+  .messages({
+    "string.base": "Area code must be a string",
+    "string.empty": "Area code is required",
+    "string.length": "Area code must be exactly 3 characters",
+    "string.pattern.base":
+      "Area code must contain only uppercase letters (e.g. GOV, CTY)",
+  });
