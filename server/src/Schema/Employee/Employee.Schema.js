@@ -55,6 +55,7 @@ const employeeSchema = new mongoose.Schema(
         required: true,
         }
     ],
+    
 
     // 4. EMPLOYMENT DETAILS
     employmentType: {

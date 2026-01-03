@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import bcrypt from 'bcrypt';
 
 // Validations
-import { fullName, email, phone, username, password, role, createdBy } from "../../Validations/User/User.Validations.js";
+import { fullName, email, phone, username, password, role, createdBy, objectId } from "../../Validations/User/User.Validations.js";
 import { employeeCode, designation, department, branches, employmentType, joiningDate, salaryType, salaryAmount, bankDetails, documents, experienceYears } from "../../Validations/Employee/Employee.Validations.js";
 import { batches, routines } from "../../Validations/Teacher/Teacher.validations.js"; // Removed unused imports
 
@@ -15,6 +15,16 @@ import { Employee } from "../../Schema/Employee/Employee.Schema.js";
 import CounterSchema from "../../Schema/Counter/Counter.Schema.js";
 import Teacher from "../../Schema/Teacher/Teacher.Schema.js";
 import successResponse from "../../Utility/Response/SuccessResponse.Utility.js";
+import { Branch } from "../../Schema/Branch/Branch.Schema.js";
+import { Batch } from "../../Schema/Batch/Batch.Schema.js";
+import { RoutineSlot } from "../../Schema/Routine/Routine.Schema.js";
+import { Admin } from "../../Schema/Admin/Admin.Schema.js";
+
+
+
+
+// VALIDATIONS
+
 
 const empProfileValidationSchema = Joi.object({
     fullName: fullName.required(),
@@ -38,7 +48,17 @@ const empProfileValidationSchema = Joi.object({
     routines: routines.required()
 });
 
-const createEmployerProfile = asyncHandler(async (req, res) => {
+const employeeBranchValidationSchema = Joi.object({
+    branches:branches.required(),
+    employeeId:objectId.required()
+})
+
+
+
+// METHODS
+
+
+ const createEmployerProfile = asyncHandler(async (req, res) => {
     let session;
     try {
         // 1. Start Session
@@ -69,6 +89,23 @@ const createEmployerProfile = asyncHandler(async (req, res) => {
             salaryType, salaryAmount, bankDetails, documents, experienceYears,
             batches, routines
         } = value;
+
+        const admin = await Admin.findById(createdBy);
+
+if (!admin) {
+  throw new ApiError(403, "Invalid admin");
+}
+
+if (
+  !admin.permissions ||
+  !admin.permissions.includes("manage_employees")
+) {
+  throw new ApiError(
+    403,
+    "Admin does not have permission to manage employees"
+  );
+}
+
 
         // 3. Check for Existing User (Pass session for read consistency)
         const existingUser = await User.findOne({
@@ -141,6 +178,15 @@ const createEmployerProfile = asyncHandler(async (req, res) => {
         if (!createdEmployee) {
             throw new ApiError(500, "Employee Profile Creation failed");
         }
+         const employeeId = createdEmployee._id;
+ 
+  
+            await Branch.updateMany(
+                { _id: { $in: branches } },
+                { $addToSet: { employees: employeeId } }, 
+                { session }
+            );
+
 
         // 7. Create Teacher
         const newTeachers = await Teacher.create([{
@@ -156,6 +202,18 @@ const createEmployerProfile = asyncHandler(async (req, res) => {
             throw new ApiError(500, "Teacher Profile Creation failed");
         }
 
+        const teacherId = createdTeacher._id;
+        await Batch.updateMany(
+                { _id: { $in: batches } },
+                { $addToSet: { mentors: teacherId } }, 
+                { session }
+            );
+        await RoutineSlot.updateMany(
+                { _id: { $in: routines } },
+                { $addToSet: { teachers: teacherId } }, 
+                { session }
+            );
+
         // 8. Commit Transaction
         await session.commitTransaction();
 
@@ -167,6 +225,7 @@ const createEmployerProfile = asyncHandler(async (req, res) => {
                 employeeId: createdEmployee._id,
                 teacherId: createdTeacher._id,
                 employeeCode: createdEmployee.employeeCode,
+                localPassword:password
             },
         });
 
@@ -184,6 +243,135 @@ const createEmployerProfile = asyncHandler(async (req, res) => {
     }
 });
 
+const assignBranchToEmployee = asyncHandler(async (req, res) => {
+  let session;
+
+  try {
+    session = await mongoose.startSession();
+    session.startTransaction();
+
+    
+    const { error, value } = employeeBranchValidationSchema.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    if (error) {
+      throw new ApiError(
+        400,
+        "Validation failed",
+        error.details.map((d) => ({
+          field: d.path.join("."),
+          message: d.message,
+        }))
+      );
+    }
+
+   
+    const { branches } = value;
+    const { employeeId } = req.params;
+
+    
+    const employee = await Employee.findById(employeeId).session(session);
+    if (!employee) {
+      throw new ApiError(404, "Employee not found");
+    }
+
+    
+    await Employee.updateOne(
+      { _id: employeeId },
+      { $addToSet: { branches: { $each: branches } } },
+      { session }
+    );
+
+   
+    await Branch.updateMany(
+      { _id: { $in: branches } },
+      { $addToSet: { employees: employeeId } },
+      { session }
+    );
 
 
-export { createEmployerProfile };
+    await session.commitTransaction();
+
+    return successResponse(res, {
+      statusCode: 201,
+      message: "Branch assigned successfully",
+    });
+
+  } catch (error) {
+    if (session) await session.abortTransaction();
+    throw error;
+  } finally {
+    if (session) session.endSession();
+  }
+});
+const requestForHoliday = asyncHandler(async(req,res)=>{
+     const { error } = objectId.required().validate(req.params.employeeId);
+  if (error) {
+    throw new ApiError(400, error.message);
+  }
+
+  const { employeeId } = req.params;
+  const { branch, startDate, endDate, reason } = req.body;
+
+  
+  const employee = await Employee.findById(employeeId).lean();
+  if (!employee) {
+    throw new ApiError(404, "Employee not found");
+  }
+
+  
+  if (!employee.branches.includes(branch)) {
+    throw new ApiError(403, "Employee not assigned to this branch");
+  }
+
+  
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (start > end) {
+    throw new ApiError(400, "Start date cannot be after end date");
+  }
+
+  
+  const ONE_DAY = 24 * 60 * 60 * 1000;
+  const durationDays =
+    Math.floor((end - start) / ONE_DAY) + 1;
+
+ 
+  const leave = await Leave.create({
+    applicantId: employeeId,
+    applicantType: "EMPLOYEE",
+    branch,
+    startDate: start,
+    endDate: end,
+    durationDays,
+    reason,
+    status: "PENDING",
+  });
+
+  const populatedLeave = await Leave.findById(leave._id)
+  .populate({
+    path: "branch",
+    select: "name code",
+  })
+  .lean();
+
+
+  return successResponse(res, {
+  statusCode: 201,
+  message: "Leave request submitted successfully",
+  data: {
+    branch: populatedLeave.branch,
+    fromDate: populatedLeave.startDate,
+    toDate: populatedLeave.endDate,
+    reason: populatedLeave.reason,
+    status: populatedLeave.status,
+  },
+});
+
+})
+
+
+export {createEmployerProfile,assignBranchToEmployee,requestForHoliday}
