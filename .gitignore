@@ -8,7 +8,7 @@
 node_modules/
 server/node_modules/
 client/node_modules/
-api_docs/
+server/api_docs/
 
 # -------------------------
 # Environment Variables
