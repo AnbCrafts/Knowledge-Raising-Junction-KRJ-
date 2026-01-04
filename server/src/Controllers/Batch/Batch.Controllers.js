@@ -399,12 +399,16 @@ const addStudentToBatch = asyncHandler(async (req, res) => {
 
 
     const { students, batchId, adminId } = value;
+    const batch = await Batch.findById(batchId).session(session);
+    if (!batch) {
+      throw new ApiError(404, "Batch not found");
+    }
 
 const admin = await Admin.findById(adminId).session(session);
 if (!admin) {
   throw new ApiError(403, "Invalid admin");
 }
-
+ 
 if (
   !admin.permissions ||
   !admin.permissions.includes("manage_batches")
@@ -428,10 +432,7 @@ if (!isBatchManager) {
 }
 
 
-    const batch = await Batch.findById(batchId).session(session);
-    if (!batch) {
-      throw new ApiError(404, "Batch not found");
-    }
+    
 
     const existingStudentIds = new Set(
       batch.students.map(id => id.toString())
