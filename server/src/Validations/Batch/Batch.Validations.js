@@ -19,9 +19,14 @@ export const positiveNumber = Joi.number().min(0).messages({
   "number.min": "Value cannot be negative",
 });
 
-export const branch = objectId.required().messages({
-  "any.required": "Branch reference is required",
-});
+export const branches = Joi.array()
+  .items(objectId.required())
+  .min(1)
+  .messages({
+    "array.base": "Branches must be an array of branch IDs",
+    "array.min": "At least one branch is required",
+  });
+
 
 export const name = Joi.string().trim().min(2).max(100).required().messages({
   "string.empty": "Batch name is required",
@@ -31,15 +36,14 @@ export const name = Joi.string().trim().min(2).max(100).required().messages({
 
 export const code = Joi.string()
   .trim()
-  .pattern(/^KRJ-\d{4}-[A-Z0-9]+-[A-Z0-9_]+$/)
+  .pattern(/^KRJ-\d{4}-[A-Z0-9_]+$/)
   .messages({
     "string.base": "Batch code must be a string",
     "string.empty": "Batch code is required",
     "string.pattern.base":
-      "Batch code must be in format KRJ-YYYY-BRANCH-BATCHNAME (e.g. KRJ-2025-CS-A1)",
-    "string.min": "Batch code must be at least 2 characters long",
-    "string.max": "Batch code must not exceed 30 characters",
+      "Batch code must be in format KRJ-YYYY-BATCHNAME (e.g. KRJ-2025-A1)",
   });
+
 
 
 export const startDate = dateField.required().messages({
@@ -54,6 +58,9 @@ export const mentors =Joi.array().items(objectId).messages({
   "array.base": "Mentors must be an array of teacher IDs",
 }); 
 
+export const createdBy = objectId.required().messages({
+  "any.required": "Admin reference is required",
+})
 
 
 /* Capacities */
@@ -78,7 +85,10 @@ export const isActive = booleanField;
 /* Relationships */
 export const subjects = Joi.array().items(objectId).messages({
   "array.base": "Subjects must be an array of BatchSubject IDs",
-});
+}); 
+export const students = Joi.array().items(objectId).messages({
+  "array.base": "students must be an array of student IDs",
+}); 
 
 export const routine = Joi.array().items(objectId).messages({
   "array.base": "Routine must be an array of RoutineSlot IDs",

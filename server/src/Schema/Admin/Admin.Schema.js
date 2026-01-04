@@ -26,10 +26,12 @@ const adminSchema = new mongoose.Schema(
         enum: [
           "manage_users",
           "manage_teachers",
+          "manage_employees",
           "manage_students",
           "manage_courses",
           "manage_payments",
           "manage_branches",
+          "manage_batches",
           "manage_admins",
           "manage_schedule",
           "manage_content",
@@ -38,10 +40,28 @@ const adminSchema = new mongoose.Schema(
         ],
       },
     ],
-    branches: [
+    createdBranches: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Branch",
+      },
+    ],
+    managedBranches: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Branch",
+      },
+    ],
+    createdBatches: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Batch",
+      },
+    ],
+    managedBatches: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Batch",
       },
     ],
     // Hierarchy: Who manages this admin?

@@ -6,13 +6,13 @@ const BranchSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-    },
+    }, 
 
     address: {
       type: String,
       default: "",
     },
-    branchCode:{
+    branchCode:{ // KRJ-year-branch-num
       type: String,
       required: true,
       trim: true,
@@ -30,13 +30,6 @@ const BranchSchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Student",
-      },
-    ],
-
-    teachers: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Teacher",
       },
     ],
 
@@ -63,6 +56,10 @@ const BranchSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    createdBy:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Admin",
+      },
   },
   { timestamps: true }
 );
