@@ -56,6 +56,10 @@ const BranchSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    createdBy:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Admin",
+      },
   },
   { timestamps: true }
 );

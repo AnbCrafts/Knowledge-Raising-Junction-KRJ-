@@ -40,10 +40,28 @@ const adminSchema = new mongoose.Schema(
         ],
       },
     ],
-    branches: [
+    createdBranches: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Branch",
+      },
+    ],
+    managedBranches: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Branch",
+      },
+    ],
+    createdBatches: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Batch",
+      },
+    ],
+    managedBatches: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Batch",
       },
     ],
     // Hierarchy: Who manages this admin?

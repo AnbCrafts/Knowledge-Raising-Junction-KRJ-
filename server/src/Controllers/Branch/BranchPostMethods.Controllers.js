@@ -15,21 +15,25 @@ const branchCreationValidationSchema = Joi.object({
     batches:batches.optional(),
     students:students.optional(),
     employees:employees.optional(),
-    managedBy:managedBy.required(),
+    managedBy:managedBy.optional(),
+    createdBy:objectId.required(),
     isActive:isActive.optional(),
     areaCode:areaCode.required(),
 })
 
 const studentToAddToBranchValidationSchema = Joi.object({
     
-    students:students.required()
+    students:students.required(),
+    adminId:objectId.required()
 })
 const batchToAddToBranchValidationSchema = Joi.object({
-    batches:batches.required()
+    batches:batches.required(),
+    adminId:objectId.required()
 })
 
 const employeesToAddToBranchValidationSchema = Joi.object({
-    employees:employees.required()
+    employees:employees.required(),
+    adminId:objectId.required()
 })
 
 
@@ -60,31 +64,28 @@ const createBranch = asyncHandler(async (req, res) => {
       students = [],
       employees = [],
       managedBy,
+      createdBy,
       isActive,
       areaCode,
       startYear,
     } = value;
 
-    const admins = await Admin.find({
-  _id: { $in: managedBy },
-});
+   const admin = await Admin.findById(createdBy);
 
-if (!admins.length || admins.length !== managedBy.length) {
-  throw new ApiError(403, "One or more managing admins are invalid");
+if (!admin) {
+  throw new ApiError(403, "Invalid admin");
 }
 
-const hasPermission = admins.some(
-  (admin) =>
-    admin.permissions &&
-    admin.permissions.includes("manage_branches")
-);
-
-if (!hasPermission) {
+if (
+  !admin.permissions ||
+  !admin.permissions.includes("manage_branches")
+) {
   throw new ApiError(
     403,
-    "At least one admin with manage_branches permission is required"
+    "Admin does not have permission to manage branches"
   );
 }
+
 
 
     session = await mongoose.startSession();
@@ -100,6 +101,14 @@ if (!hasPermission) {
       counter.seq
     ).padStart(2, "0")}`;
 
+    const finalManagedBy = [
+  createdBy,
+  ...(managedBy || []),
+].map(id => id.toString());
+
+const uniqueManagedBy = [...new Set(finalManagedBy)];
+
+
     const [branch] = await Branch.create(
       [
         {
@@ -109,7 +118,8 @@ if (!hasPermission) {
           batches,
           students,
           employees,
-          managedBy,
+          managedBy : uniqueManagedBy,
+          createdBy,
           isActive,
         },
       ],
@@ -140,6 +150,36 @@ if (!hasPermission) {
       );
     }
 
+
+    await Admin.updateOne(
+  { _id: createdBy },
+  {
+    $addToSet: {
+      createdBranches: branch._id,
+      managedBranches: branch._id,
+    },
+  },
+  { session }
+);
+
+
+const managedAdmins = (managedBy || [])
+  .map(id => id.toString())
+  .filter(id => id !== createdBy.toString());
+
+  if (managedAdmins.length) {
+  await Admin.updateMany(
+    { _id: { $in: managedAdmins } },
+    {
+      $addToSet: {
+        managedBranches: branch._id,
+      },
+    },
+    { session }
+  );
+}
+
+
     await session.commitTransaction();
 
     return successResponse(res, {
@@ -163,21 +203,21 @@ if (!hasPermission) {
     if (session) session.endSession();
   }
 });
-
 const addStudentsToBranch = asyncHandler(async (req, res) => {
   let session;
 
-  
   const branchErr = objectId.required().validate(req.params.branchId);
   if (branchErr.error) {
     throw new ApiError(400, branchErr.error.message);
   }
 
-  
-  const { error, value } = studentToAddToBranchValidationSchema.validate(req.body, {
-    abortEarly: false,
-    stripUnknown: true,
-  });
+  const { error, value } = studentToAddToBranchValidationSchema.validate(
+    req.body,
+    {
+      abortEarly: false,
+      stripUnknown: true,
+    }
+  );
 
   if (error) {
     throw new ApiError(
@@ -191,16 +231,41 @@ const addStudentsToBranch = asyncHandler(async (req, res) => {
   }
 
   const { branchId } = req.params;
-  const { studentIds } = value;
+  const { studentIds, adminId } = value;
 
   try {
     session = await mongoose.startSession();
     session.startTransaction();
 
-    
+    const admin = await Admin.findById(adminId).session(session);
+    if (!admin) {
+      throw new ApiError(403, "Invalid admin");
+    }
+
+    if (
+      !admin.permissions ||
+      !admin.permissions.includes("manage_students")
+    ) {
+      throw new ApiError(
+        403,
+        "Admin does not have permission to manage students"
+      );
+    }
+
     const branch = await Branch.findById(branchId).session(session);
     if (!branch) {
       throw new ApiError(404, "Branch not found");
+    }
+
+    const isBranchManager = branch.managedBy
+      .map(id => id.toString())
+      .includes(adminId.toString());
+
+    if (!isBranchManager) {
+      throw new ApiError(
+        403,
+        "Admin is not authorized to manage this branch"
+      );
     }
 
     const count = await Student.countDocuments({
@@ -211,14 +276,12 @@ const addStudentsToBranch = asyncHandler(async (req, res) => {
       throw new ApiError(400, "One or more students not found");
     }
 
-    
     await Branch.updateOne(
       { _id: branchId },
       { $addToSet: { students: { $each: studentIds } } },
       { session }
     );
 
-    
     await Student.updateMany(
       { _id: { $in: studentIds } },
       { $addToSet: { branches: branchId } },
@@ -233,6 +296,10 @@ const addStudentsToBranch = asyncHandler(async (req, res) => {
       data: {
         branchId,
         addedStudents: studentIds.length,
+        admin: {
+          name: admin.fullName,
+          email: admin.email,
+        },
       },
     });
   } catch (err) {
@@ -268,15 +335,41 @@ const addBatchesToBranch = asyncHandler(async (req, res) => {
   }
 
   const { branchId } = req.params;
-  const { batches } = value;
+  const { batches, adminId } = value;
 
   try {
     session = await mongoose.startSession();
     session.startTransaction();
 
+    const admin = await Admin.findById(adminId).session(session);
+    if (!admin) {
+      throw new ApiError(403, "Invalid admin");
+    }
+
+    if (
+      !admin.permissions ||
+      !admin.permissions.includes("manage_batches")
+    ) {
+      throw new ApiError(
+        403,
+        "Admin does not have permission to manage batches"
+      );
+    }
+
     const branch = await Branch.findById(branchId).session(session);
     if (!branch) {
       throw new ApiError(404, "Branch not found");
+    }
+
+    const isBranchManager = branch.managedBy
+      .map(id => id.toString())
+      .includes(adminId.toString());
+
+    if (!isBranchManager) {
+      throw new ApiError(
+        403,
+        "Admin is not authorized to manage this branch"
+      );
     }
 
     const count = await Batch.countDocuments({
@@ -307,6 +400,10 @@ const addBatchesToBranch = asyncHandler(async (req, res) => {
       data: {
         branchId,
         addedBatches: batches.length,
+        admin: {
+          name: admin.fullName,
+          email: admin.email,
+        },
       },
     });
   } catch (err) {
@@ -325,10 +422,13 @@ const addEmployeesToBranch = asyncHandler(async (req, res) => {
     throw new ApiError(400, branchErr.error.message);
   }
 
-  const { error, value } = employeesToAddToBranchValidationSchema.validate(req.body, {
-    abortEarly: false,
-    stripUnknown: true,
-  });
+  const { error, value } = employeesToAddToBranchValidationSchema.validate(
+    req.body,
+    {
+      abortEarly: false,
+      stripUnknown: true,
+    }
+  );
 
   if (error) {
     throw new ApiError(
@@ -342,15 +442,41 @@ const addEmployeesToBranch = asyncHandler(async (req, res) => {
   }
 
   const { branchId } = req.params;
-  const { employees } = value;
+  const { employees, adminId } = value;
 
   try {
     session = await mongoose.startSession();
     session.startTransaction();
 
+    const admin = await Admin.findById(adminId).session(session);
+    if (!admin) {
+      throw new ApiError(403, "Invalid admin");
+    }
+
+    if (
+      !admin.permissions ||
+      !admin.permissions.includes("manage_employees")
+    ) {
+      throw new ApiError(
+        403,
+        "Admin does not have permission to manage employees"
+      );
+    }
+
     const branch = await Branch.findById(branchId).session(session);
     if (!branch) {
       throw new ApiError(404, "Branch not found");
+    }
+
+    const isBranchManager = branch.managedBy
+      .map(id => id.toString())
+      .includes(adminId.toString());
+
+    if (!isBranchManager) {
+      throw new ApiError(
+        403,
+        "Admin is not authorized to manage this branch"
+      );
     }
 
     const count = await Employee.countDocuments({
@@ -381,6 +507,10 @@ const addEmployeesToBranch = asyncHandler(async (req, res) => {
       data: {
         branchId,
         addedEmployees: employees.length,
+        admin: {
+          name: admin.fullName,
+          email: admin.email,
+        },
       },
     });
   } catch (err) {
@@ -390,6 +520,7 @@ const addEmployeesToBranch = asyncHandler(async (req, res) => {
     if (session) session.endSession();
   }
 });
+
 
 
 

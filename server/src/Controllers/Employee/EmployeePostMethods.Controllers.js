@@ -50,7 +50,7 @@ const empProfileValidationSchema = Joi.object({
 
 const employeeBranchValidationSchema = Joi.object({
     branches:branches.required(),
-    employeeId:objectId.required()
+    
 })
 
 
@@ -242,7 +242,6 @@ if (
         }
     }
 });
-
 const assignBranchToEmployee = asyncHandler(async (req, res) => {
   let session;
 
