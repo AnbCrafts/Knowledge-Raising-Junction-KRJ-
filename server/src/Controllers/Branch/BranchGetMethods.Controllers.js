@@ -23,7 +23,6 @@ const branchQueryValidationSchema = Joi.object({
   order: Joi.string().valid("asc", "desc").optional(),
 });
 
-
 const getBranches = asyncHandler(async (req, res) => {
   const { error, value } = branchQueryValidationSchema.validate(req.query, {
     abortEarly: false,
@@ -98,6 +97,28 @@ const getBranches = asyncHandler(async (req, res) => {
   });
 });
 
+ const getBranchById = asyncHandler(async (req, res) => {
+  const { branchId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(branchId)) {
+    throw new ApiError(400, "Invalid branch ID");
+  }
+
+  const branch = await Branch.findById(branchId)
+    .populate("managedBy", "firstName lastName email")
+    .populate("createdBy", "firstName lastName email");
+
+  if (!branch) {
+    throw new ApiError(404, "Branch not found");
+  }
+
+  return successResponse(
+    res,
+    200,
+    "Branch fetched successfully",
+    branch
+  );
+});
 
 
-export {getBranches}
+export {getBranches,getBranchById}

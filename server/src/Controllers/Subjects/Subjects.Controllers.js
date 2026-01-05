@@ -1,3 +1,5 @@
-const createBranch = async(req,res)=>{
+
+const createSubject = async(req,res)=>{
+
     
 }

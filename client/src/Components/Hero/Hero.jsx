@@ -8,7 +8,7 @@ import {
   Users,
   BarChart3,
 } from "lucide-react";
-import { assets } from "../../../assets/assets";
+import { assets } from "../../assets/assets";
 
 const HeroSection = () => {
   const fadeInUp = {

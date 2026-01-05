@@ -1,0 +1,25 @@
+[
+  {
+    "id": "amit-tiwary",
+    "name": "Amit Tiwary",
+    "faculty": "Physics",
+    "experienceYears": 9,
+    "phone": "8271748865",
+    "email": "amit8271kumar@gmail.com",
+    "socialLinks": {
+      "instagram": "https://www.instagram.com/tiwaryamit0319",
+      "facebook": "https://www.facebook.com/share/18GzDkvaNo/"
+    }
+  },
+  {
+    "id": "krj-kundan",
+    "name": "KRJ Kundan",
+    "faculty": "Chemistry & Biology",
+    "experienceYears": 17,
+    "phone": "8969581492",
+    "email": "krjkundan@gmail.com",
+    "socialLinks": {
+      "facebook": "https://www.facebook.com/share/17wfVoq7sc/"
+    }
+  }
+]

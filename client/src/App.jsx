@@ -6,7 +6,7 @@ import Footer from "./Components/Footer/Footer";
 
 const App = () => {
   return (
-    <div>
+    <div> 
       <Header />
       <Routes>
         <Route path="/" element={<Gateway />} />
