@@ -256,6 +256,10 @@ if (!isAdminOfBranch) {
         }
     }
 });
+
+
+
+
 const assignBranchToEmployee = asyncHandler(async (req, res) => {
   let session;
 

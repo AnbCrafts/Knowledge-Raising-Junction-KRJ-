@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import logo from "../../assets/KRJ_logo.png";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,6 +18,8 @@ const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   // Handle scroll effect for sticky header
   useEffect(() => {
@@ -88,11 +92,39 @@ const Header = () => {
 
               <div className="h-6 w-px bg-gray-200 mx-2"></div>
 
-              {/* Secondary CTA: Login */}
-              <button className="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-orange-600 transition-colors px-3 py-2">
-                <UserCircle size={18} />
-                Login
-              </button>
+              {/* Secondary CTA: Login/Logout/Profile */}
+              {user ? (
+                <div className="relative group">
+                  <button className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors px-3 py-2">
+                    <span>Hi, {user.fullName?.split(" ")[0]}</span>
+                    <UserCircle size={20} />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-right z-50">
+                    <button
+                      onClick={() => navigate("/profile")}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600"
+                    >
+                      Profile
+                    </button>
+                    <button
+                      onClick={logout}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => navigate("/login")}
+                  className="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-orange-600 transition-colors px-3 py-2"
+                >
+                  <UserCircle size={18} />
+                  Login
+                </button>
+              )}
 
               {/* Primary CTA: Enquiry */}
               <motion.button
@@ -146,10 +178,31 @@ const Header = () => {
               <hr className="border-gray-100 my-4" />
 
               <div className="flex flex-col gap-3 px-2">
-                <button className="w-full flex items-center justify-center gap-2 text-gray-700 font-semibold py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <UserCircle size={20} />
-                  Student Login
-                </button>
+                {user ? (
+                  <>
+                    <button
+                      onClick={() => navigate("/profile")}
+                      className="w-full flex items-center justify-center gap-2 text-gray-700 font-semibold py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <UserCircle size={20} />
+                      My Profile
+                    </button>
+                    <button
+                      onClick={logout}
+                      className="w-full flex items-center justify-center gap-2 text-gray-700 font-semibold py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => navigate("/login")}
+                    className="w-full flex items-center justify-center gap-2 text-gray-700 font-semibold py-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <UserCircle size={20} />
+                    Student Login
+                  </button>
+                )}
                 <button className="w-full text-center bg-orange-500 text-white font-semibold py-3 rounded-lg shadow-md hover:bg-orange-600 transition-colors">
                   Book Free Counselling
                 </button>
