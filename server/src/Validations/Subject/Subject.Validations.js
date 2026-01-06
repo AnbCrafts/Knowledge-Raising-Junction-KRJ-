@@ -21,12 +21,27 @@ export const name = Joi.string().trim().min(2).max(100).messages({
   "string.max": "Subject name must not exceed 100 characters",
 });
 
-export const code = Joi.string().trim().min(2).max(20).messages({
-  "string.base": "Subject code must be a string",
-  "string.empty": "Subject code is required",
-  "string.min": "Subject code must be at least 2 characters long",
-  "string.max": "Subject code must not exceed 20 characters",
-});
+export const subjectCode = Joi.string()
+  .trim()
+  .pattern(/^KRJ-(20\d{2})-[A-Z]{2,5}-\d{3}$/)
+  .messages({
+    "string.base": "Subject code must be a string",
+    "string.empty": "Subject code is required",
+    "string.pattern.base":
+      "Subject code must be in format KRJ-YYYY-INITIALS-XXX (e.g. KRJ-2025-PHY-001)",
+  });
+
+export const subjectInitials = Joi.string()
+  .trim()
+  .uppercase()
+  .pattern(/^[A-Z]{2,5}$/)
+  .messages({
+    "string.base": "Subject initials must be a string",
+    "string.empty": "Subject initials are required",
+    "string.pattern.base":
+      "Subject initials must contain only 2 to 5 uppercase letters (e.g. PHY, CHE, MTH)",
+  });
+
 
 export const description = Joi.string().max(1000).allow("").messages({
   "string.base": "Description must be a string",
@@ -47,9 +62,15 @@ export const type = Joi.string()
 export const branch = objectId.required().messages({
   "any.required": "Branch ID is required",
 });
+export const createdBy = objectId.required().messages({
+  "any.required": "Admin ID is required",
+});
 
 export const batches = Joi.array().items(objectId).messages({
   "array.base": "Batches must be an array of batch IDs",
+});
+export const routines = Joi.array().items(objectId).messages({
+  "array.base": "Routines must be an array of Routine IDs",
 });
 
 

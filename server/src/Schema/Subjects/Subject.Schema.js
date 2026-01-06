@@ -25,7 +25,7 @@ const subjectSchema = new mongoose.Schema(
     //   ref: "Branch",
     //   required: true,
     //   index: true,
-    // },
+    // }, 
     batches: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "Batch",
@@ -76,6 +76,11 @@ const subjectSchema = new mongoose.Schema(
       min: 0,
       max: 100,
     },
+    createdBy:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Admin",
+       
+      },
   },
   { timestamps: true }
 );
