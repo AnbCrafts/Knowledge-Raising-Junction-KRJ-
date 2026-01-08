@@ -22,7 +22,7 @@ const routineSlotSchema = new mongoose.Schema(
       ref: "Teacher",
       required: true,
     }],
-
+ 
     // 4. SUBJECT (Usually one subject per slot)
     subject: {
       type: mongoose.Schema.Types.ObjectId,
