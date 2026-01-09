@@ -12,7 +12,7 @@ import successResponse from "../../Utility/Response/SuccessResponse.Utility";
 
 
 const RoutineValidationSchema = Joi.object({
-  branches:branches.required(),        // ref: Branch
+  // branches:branches.required(),        // ref: Branch
   batches: batches.required(),         // ref: Batch
   teachers: teachers.required(),        // ref: Teacher
 
@@ -47,7 +47,6 @@ const addRoutineToBatchSchema = Joi.object({
     const data = await validateRequest(RoutineValidationSchema, req.body);
 
     const {
-      branches,
       batches,
       teachers,
       subject,
@@ -68,18 +67,12 @@ const addRoutineToBatchSchema = Joi.object({
     }
 
     const [
-      branchCount,
       batchCount,
       teacherCount
     ] = await Promise.all([
-      Branch.countDocuments({ _id: { $in: branches } }).session(session),
       Batch.countDocuments({ _id: { $in: batches } }).session(session),
       Teacher.countDocuments({ _id: { $in: teachers } }).session(session)
     ]);
-
-    if (branchCount !== branches.length) {
-      throw new ApiError(400, "Invalid branch IDs provided");
-    }
 
     if (batchCount !== batches.length) {
       throw new ApiError(400, "Invalid batch IDs provided");
@@ -112,7 +105,6 @@ const addRoutineToBatchSchema = Joi.object({
     const [routine] = await RoutineSlot.create(
       [
         {
-          branches,
           batches,
           teachers,
           subject,
@@ -124,36 +116,29 @@ const addRoutineToBatchSchema = Joi.object({
           roomNumber,
           meetingLink,
           topic,
-          createdBy: req.admin._id // from adminAuth middleware
+          createdBy: req.admin._id
         }
       ],
       { session }
     );
 
-await Subject.updateOne(
-  { _id: subject },
-  { $addToSet: { routines: routine._id } },
-  { session }
-);
+    await Subject.updateOne(
+      { _id: subject },
+      { $addToSet: { routines: routine._id } },
+      { session }
+    );
 
-await Batch.updateMany(
-  { _id: { $in: batches } },
-  { $addToSet: { routines: routine._id } },
-  { session }
-);
+    await Batch.updateMany(
+      { _id: { $in: batches } },
+      { $addToSet: { routines: routine._id } },
+      { session }
+    );
 
-await Branch.updateMany(
-  { _id: { $in: branches } },
-  { $addToSet: { routines: routine._id } },
-  { session }
-);
-
-await Teacher.updateMany(
-  { _id: { $in: teachers } },
-  { $addToSet: { routines: routine._id } },
-  { session }
-);
-
+    await Teacher.updateMany(
+      { _id: { $in: teachers } },
+      { $addToSet: { routines: routine._id } },
+      { session }
+    );
 
     await session.commitTransaction();
     session.endSession();
@@ -171,6 +156,7 @@ await Teacher.updateMany(
     throw err;
   }
 });
+
  const assignTeacherToRoutine = asyncHandler(async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
