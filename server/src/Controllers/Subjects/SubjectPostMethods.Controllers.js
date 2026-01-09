@@ -10,7 +10,7 @@ import successResponse from "../../Utility/Response/SuccessResponse.Utility.js";
 import ApiError from "../../Utility/Response/ErrorResponse.Utility.js";
 import { generateSubjectCode } from "../../Utility/Codes/SubjectCode.Utility.js";
 
-
+ 
 
 const subjectValidationSchema = Joi.object({
     name : name.required(),

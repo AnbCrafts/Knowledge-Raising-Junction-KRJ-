@@ -20,7 +20,7 @@ const subjectSchema = new mongoose.Schema(
       enum: ["THEORY", "LAB", "SEMINAR", "OPTIONAL"],
       default: "THEORY",
     },
-    
+
     batches: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "Batch",
@@ -64,6 +64,23 @@ const subjectSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+      index: true
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null
+    },
+
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      default: null
+    },
+
+    deleteReason: {
+      type: String,
+      trim: true
     },
     syllabusCompletion: {
       type: Number,
@@ -71,11 +88,11 @@ const subjectSchema = new mongoose.Schema(
       min: 0,
       max: 100,
     },
-    createdBy:{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Admin",
-       
-      },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+
+    },
   },
   { timestamps: true }
 );

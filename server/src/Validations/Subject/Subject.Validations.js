@@ -7,6 +7,25 @@ export const objectId = Joi.string().hex().length(24).messages({
   "string.hex": "ID must be a valid hexadecimal value",
   "string.length": "ID must be a valid 24-character ObjectId",
 });
+export const dateField = Joi.date()
+  .iso()
+  .allow(null)
+  .messages({
+    "date.base": "Date must be a valid date",
+    "date.format": "Date must be in ISO format"
+  });
+export const deleteReasonSchema = Joi.string()
+  .trim()
+  .min(10)
+  .max(300)
+  .required()
+  .messages({
+    "any.required": "Delete reason is required",
+    "string.base": "Delete reason must be a string",
+    "string.empty": "Delete reason cannot be empty",
+    "string.min": "Delete reason must be at least 10 characters",
+    "string.max": "Delete reason must be at most 300 characters"
+  });  
 
 export const booleanField = Joi.boolean().messages({
   "boolean.base": "Value must be true or false",
