@@ -2,12 +2,7 @@ import mongoose from "mongoose";
 
 const routineSlotSchema = new mongoose.Schema(
   {
-    // 1. ARRAY OF BRANCHES (Joint sessions across locations?)
-    // branches: [{
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "Branch",
-    //   required: true,
-    // }],
+    
 
     // 2. ARRAY OF BATCHES (Combined classes)
     batches: [{
@@ -44,7 +39,27 @@ const routineSlotSchema = new mongoose.Schema(
       type: Date, // e.g., 2025-12-25
       default: null
     },
-
+    isActive: {
+          type: Boolean,
+          default: true,
+          index: true
+        },
+    
+        deletedAt: {
+          type: Date,
+          default: null
+        },
+    
+        deletedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Admin",
+          default: null
+        },
+    
+        deleteReason: {
+          type: String,
+          trim: true
+        },
     // 6. META INFORMATION
     classType: {
       type: String,
