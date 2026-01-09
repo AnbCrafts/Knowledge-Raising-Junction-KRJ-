@@ -45,7 +45,7 @@ const getSubjectById = asyncHandler(async (req, res) => {
     subject
   );
 });
-
+   
  const getSubjects = asyncHandler(async (req, res) => {
   const {
     page = 1,
@@ -196,7 +196,7 @@ const getSubjectById = asyncHandler(async (req, res) => {
     }
   });
 });
-
+ 
  const getSubjectOptions = asyncHandler(async (req, res) => {
   const { isActive } = req.query;
 

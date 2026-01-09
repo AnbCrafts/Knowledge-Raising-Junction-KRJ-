@@ -3,11 +3,11 @@ import mongoose from "mongoose";
 const routineSlotSchema = new mongoose.Schema(
   {
     // 1. ARRAY OF BRANCHES (Joint sessions across locations?)
-    branches: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Branch",
-      required: true,
-    }],
+    // branches: [{
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: "Branch",
+    //   required: true,
+    // }],
 
     // 2. ARRAY OF BATCHES (Combined classes)
     batches: [{

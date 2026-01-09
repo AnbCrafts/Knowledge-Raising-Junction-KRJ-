@@ -20,12 +20,7 @@ const subjectSchema = new mongoose.Schema(
       enum: ["THEORY", "LAB", "SEMINAR", "OPTIONAL"],
       default: "THEORY",
     },
-    // branch: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "Branch",
-    //   required: true,
-    //   index: true,
-    // }, 
+    
     batches: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "Batch",

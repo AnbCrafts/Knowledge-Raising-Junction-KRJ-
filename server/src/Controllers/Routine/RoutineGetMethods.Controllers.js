@@ -1,4 +1,5 @@
 import { Batch } from "../../Schema/Batch/Batch.Schema.js";
+import { Branch } from "../../Schema/Branch/Branch.Schema.js";
 import { RoutineSlot } from "../../Schema/Routine/Routine.Schema.js";
 import { Student } from "../../Schema/Student/Student.Schema.js";
 import { Subject } from "../../Schema/Subjects/Subject.Schema.js";
@@ -67,13 +68,11 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
  const getSingleRoutine = asyncHandler(async (req, res) => {
   const { routineId } = req.params;
 
-  
   const { error } = objectId.required().validate(routineId);
   if (error) {
     throw new ApiError(400, "Invalid routine ID");
   }
 
-  
   const routine = await RoutineSlot.findById(routineId)
     // 🔹 Subject
     .populate({
@@ -87,12 +86,6 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
       select: "name code year isActive"
     })
 
-    // 🔹 Branches
-    .populate({
-      path: "branches",
-      select: "name code location isActive"
-    })
-
     // 🔹 Teachers → User
     .populate({
       path: "teachers",
@@ -101,9 +94,7 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
         path: "userId",
         select: "firstName lastName email phone"
       }
-    })
-
-    
+    });
 
   if (!routine) {
     throw new ApiError(404, "Routine not found");
@@ -116,6 +107,7 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     routine
   );
 });
+
  const getAllRoutinesOfBranchByBatch = asyncHandler(async (req, res) => {
   const { branchId } = req.params;
 
@@ -147,7 +139,6 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
   }
 
   const routines = await RoutineSlot.find({
-    branches: branchId,
     batches: { $in: batchIds }
   })
     .populate({
@@ -213,22 +204,37 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
   );
 });
 
+
  const getTodayRoutineForEachBranchByBatch = asyncHandler(async (req, res) => {
   const { branchId } = req.params;
 
-  
   const { error } = objectId.required().validate(branchId);
   if (error) {
     throw new ApiError(400, "Invalid branch ID");
   }
 
-  
+  const branch = await Branch.findById(branchId)
+    .select("batches name code")
+    .lean();
+
+  if (!branch) {
+    throw new ApiError(404, "Branch not found");
+  }
+
+  if (!branch.batches || branch.batches.length === 0) {
+    return successResponse(
+      res,
+      200,
+      "No batches found for this branch",
+      []
+    );
+  }
+
   const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   const today = days[new Date().getDay()];
 
-  
   const routines = await RoutineSlot.find({
-    branches: branchId,
+    batches: { $in: branch.batches },
     day: today
   })
     .populate({
@@ -250,11 +256,15 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     .sort({ startTime: 1 })
     .lean();
 
-  
   const batchMap = {};
 
   for (const routine of routines) {
     for (const batch of routine.batches) {
+      // Only include batches that belong to this branch
+      if (!branch.batches.some(b => b.toString() === batch._id.toString())) {
+        continue;
+      }
+
       if (!batchMap[batch._id]) {
         batchMap[batch._id] = {
           _id: batch._id,
@@ -277,16 +287,14 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     }
   }
 
- 
-  const result = Object.values(batchMap);
-
   return successResponse(
     res,
     200,
     "Today's routines fetched successfully",
-    result
+    Object.values(batchMap)
   );
 });
+
  const getTodayRoutineByBatch = asyncHandler(async (req, res) => {
   const { batchId } = req.params;
 
@@ -295,6 +303,11 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
   if (error) {
     throw new ApiError(400, "Invalid batch ID");
   }
+
+  const batch = await Batch.findById(batchId).select("_id").lean();
+if (!batch) {
+  throw new ApiError(404, "Batch not found");
+}
 
  
   const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -343,52 +356,59 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     }
   );
 });
+
  const getAllRoutinesOfBatch = asyncHandler(async (req, res) => {
   const { batchId } = req.params;
   const { day, subjectId, date } = req.query;
 
-  
   const { error } = objectId.required().validate(batchId);
   if (error) {
     throw new ApiError(400, "Invalid batch ID");
   }
 
-  
   const batchExists = await Batch.exists({ _id: batchId });
   if (!batchExists) {
     throw new ApiError(404, "Batch not found");
   }
 
-  
-  const query = {
-    batches: batchId
-  };
-
-  if (day) {
-    query.day = day;
+  if (day && date) {
+    throw new ApiError(
+      400,
+      "Provide either day or specificDate, not both"
+    );
   }
 
-  if (date) {
-    query.specificDate = date;
-  }
+  const query = { batches: batchId };
+
+  if (day) query.day = day;
+  if (date) query.specificDate = date;
 
   if (subjectId) {
-    const { error: subjectErr } = objectId.required().validate(subjectId);
+    const { error: subjectErr } =
+      objectId.required().validate(subjectId);
     if (subjectErr) {
       throw new ApiError(400, "Invalid subject ID");
     }
+
+    const subjectExists = await Subject.exists({
+      _id: subjectId,
+      batches: batchId
+    });
+
+    if (!subjectExists) {
+      throw new ApiError(
+        400,
+        "Subject does not belong to this batch"
+      );
+    }
+
     query.subject = subjectId;
   }
 
-  
   const routines = await RoutineSlot.find(query)
     .populate({
       path: "subject",
       select: "name code type"
-    })
-    .populate({
-      path: "branches",
-      select: "name code"
     })
     .populate({
       path: "teachers",
@@ -412,30 +432,48 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     }
   );
 });
+
+
  const getAllRoutinesOfStudent = asyncHandler(async (req, res) => {
   const { studentId } = req.params;
 
-  
   const { error } = objectId.required().validate(studentId);
   if (error) {
     throw new ApiError(400, "Invalid student ID");
   }
 
- 
   const student = await Student.findById(studentId)
-    .select("branchId subjects batches")
+    .select("batches subjects")
     .lean();
 
   if (!student) {
     throw new ApiError(404, "Student not found");
   }
 
-  const { branchId, subjects = [], batches = [] } = student;
+  const { batches = [], subjects = [] } = student;
 
-  const routines = await RoutineSlot.find({
-    branches: branchId,
-    subject: { $in: subjects }
-  })
+  if (!batches.length) {
+    return successResponse(
+      res,
+      200,
+      "Student has no assigned batches",
+      {
+        studentId,
+        weeklyTimetable: {},
+        todayRoutine: []
+      }
+    );
+  }
+
+  const routineQuery = {
+    batches: { $in: batches }
+  };
+
+  if (subjects.length) {
+    routineQuery.subject = { $in: subjects };
+  }
+
+  const routines = await RoutineSlot.find(routineQuery)
     .populate({
       path: "subject",
       select: "name code"
@@ -455,37 +493,16 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     .sort({ day: 1, startTime: 1 })
     .lean();
 
-  const applicableRoutines = routines.filter(routine => {
-    // no batch restriction → applicable
-    if (!routine.batches || routine.batches.length === 0) {
-      return true;
-    }
-
-    return routine.batches.some(b =>
-      batches.some(sb => sb.toString() === b._id.toString())
-    );
-  });
-
-  
-  const weeklyTimetable = {};
   const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const weeklyTimetable = Object.fromEntries(
+    days.map(d => [d, []])
+  );
 
-  for (const day of days) {
-    weeklyTimetable[day] = [];
-  }
-
-  for (const routine of applicableRoutines) {
+  for (const routine of routines) {
     weeklyTimetable[routine.day].push({
       routineId: routine._id,
       subject: routine.subject,
-      batch:
-        routine.batches.length > 0
-          ? routine.batches.map(b => ({
-              _id: b._id,
-              name: b.name,
-              code: b.code
-            }))
-          : null,
+      batches: routine.batches,
       startTime: routine.startTime,
       endTime: routine.endTime,
       teachers: routine.teachers.map(t => ({
@@ -495,12 +512,11 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     });
   }
 
-  
   const today = days[new Date().getDay()];
 
   const todayRoutine = weeklyTimetable[today].map(r => ({
     subject: r.subject,
-    batch: r.batch,
+    batches: r.batches,
     time: `${r.startTime} - ${r.endTime}`,
     teachers: r.teachers
   }));
@@ -516,40 +532,23 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     }
   );
 });
+
+
  const getAllRoutinesOfTeacher = asyncHandler(async (req, res) => {
   const { teacherId } = req.params;
 
- 
   const { error } = objectId.required().validate(teacherId);
   if (error) {
     throw new ApiError(400, "Invalid teacher ID");
   }
 
-  
-  const teacher = await Teacher.findById(teacherId)
-    .populate({
-      path: "employeeId",
-      select: "branches"
-    })
-    .lean();
-
-  if (!teacher) {
+  const teacherExists = await Teacher.exists({ _id: teacherId });
+  if (!teacherExists) {
     throw new ApiError(404, "Teacher not found");
   }
 
-  const branchIds = teacher.employeeId?.branches || [];
-
-  if (branchIds.length === 0) {
-    return successResponse(res, 200, "No routines found", {
-      teacherId,
-      weeklyTimetable: {},
-      todayRoutine: []
-    });
-  }
-
   const routines = await RoutineSlot.find({
-    teachers: teacherId,
-    branches: { $in: branchIds }
+    teachers: teacherId
   })
     .populate({
       path: "subject",
@@ -557,11 +556,7 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     })
     .populate({
       path: "batches",
-      select: "name code"
-    })
-    .populate({
-      path: "branches",
-      select: "name code"
+      select: "name code branch"
     })
     .populate({
       path: "teachers",
@@ -574,28 +569,20 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     .sort({ day: 1, startTime: 1 })
     .lean();
 
-  
   const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-  const weeklyTimetable = {};
-  days.forEach(d => (weeklyTimetable[d] = []));
+  const weeklyTimetable = Object.fromEntries(
+    days.map(d => [d, []])
+  );
 
-  
   for (const routine of routines) {
     weeklyTimetable[routine.day].push({
       routineId: routine._id,
       subject: routine.subject,
-      batch:
-        routine.batches && routine.batches.length > 0
-          ? routine.batches.map(b => ({
-              _id: b._id,
-              name: b.name,
-              code: b.code
-            }))
-          : null,
-      branch: routine.branches.map(br => ({
-        _id: br._id,
-        name: br.name,
-        code: br.code
+      batches: routine.batches.map(b => ({
+        _id: b._id,
+        name: b.name,
+        code: b.code,
+        branch: b.branch // derived, not stored in routine
       })),
       startTime: routine.startTime,
       endTime: routine.endTime,
@@ -606,14 +593,13 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     });
   }
 
-  
   const today = days[new Date().getDay()];
 
   const todayRoutine = weeklyTimetable[today].map(r => ({
     subject: r.subject,
-    batch: r.batch,
-    branch: r.branch,
-    time: `${r.startTime} - ${r.endTime}`
+    batches: r.batches,
+    time: `${r.startTime} - ${r.endTime}`,
+    teachers: r.teachers
   }));
 
   return successResponse(
@@ -627,16 +613,16 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     }
   );
 });
+
+
  const getAllRoutinesOfSubject = asyncHandler(async (req, res) => {
   const { subjectId } = req.params;
 
-  
   const { error } = objectId.required().validate(subjectId);
   if (error) {
     throw new ApiError(400, "Invalid subject ID");
   }
 
- 
   const subject = await Subject.findById(subjectId)
     .select("_id name code")
     .lean();
@@ -650,11 +636,7 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
   })
     .populate({
       path: "batches",
-      select: "name code"
-    })
-    .populate({
-      path: "branches",
-      select: "name code"
+      select: "name code branch"
     })
     .populate({
       path: "teachers",
@@ -668,24 +650,18 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     .lean();
 
   const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-  const weeklyTimetable = {};
-  days.forEach(d => (weeklyTimetable[d] = []));
+  const weeklyTimetable = Object.fromEntries(
+    days.map(d => [d, []])
+  );
 
   for (const routine of routines) {
     weeklyTimetable[routine.day].push({
       routineId: routine._id,
-      batch:
-        routine.batches && routine.batches.length > 0
-          ? routine.batches.map(b => ({
-              _id: b._id,
-              name: b.name,
-              code: b.code
-            }))
-          : null,
-      branch: routine.branches.map(br => ({
-        _id: br._id,
-        name: br.name,
-        code: br.code
+      batches: routine.batches.map(b => ({
+        _id: b._id,
+        name: b.name,
+        code: b.code,
+        branch: b.branch // derived, not stored in routine
       })),
       startTime: routine.startTime,
       endTime: routine.endTime,
@@ -699,8 +675,7 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
   const today = days[new Date().getDay()];
 
   const todayRoutine = weeklyTimetable[today].map(r => ({
-    batch: r.batch,
-    branch: r.branch,
+    batches: r.batches,
     time: `${r.startTime} - ${r.endTime}`,
     teachers: r.teachers
   }));
@@ -716,6 +691,7 @@ import { objectId } from "../../Validations/Routine/Routine.Validations.js";
     }
   );
 });
+
 
 
 export {getAllRoutinesOfBatch,getAllRoutinesOfBranchByBatch,getAllRoutinesOfStudent,getAllRoutinesOfSubject,getAllRoutinesOfTeacher,getRoutines,getSingleRoutine,getTodayRoutineByBatch,getTodayRoutineForEachBranchByBatch}
