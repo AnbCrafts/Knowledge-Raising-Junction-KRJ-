@@ -105,7 +105,7 @@ if (
     "Admin does not have permission to manage employees"
   );
 }
-
+ 
 const adminBranchIds = (admin.branches || []).map(id => id.toString());
 const batchBranchIds = branches.map(id => id.toString());
 
