@@ -101,7 +101,7 @@ const employeeSchema = new mongoose.Schema(
         ref: "Payment",
         required: true,
       }
-    ],
+    ], 
 
     salaryAmount: {
       type: Number,

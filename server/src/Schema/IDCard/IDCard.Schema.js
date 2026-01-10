@@ -64,5 +64,5 @@ const idCardSchema = new mongoose.Schema(
 );
 
 idCardSchema.index({ holderType: 1, holderId: 1 }, { unique: true });
-
+ 
 export const IDCard = mongoose.model("IDCard", idCardSchema);
