@@ -1,26 +1,17 @@
 import Joi from "joi";
-
 import { asyncHandler } from "../../../Utility/Response/AsyncHandler.Utility.js";
 import ApiError from "../../../Utility/Response/ErrorResponse.Utility.js";
 import successResponse from "../../../Utility/Response/SuccessResponse.Utility.js";
 
 import { Student } from "../../../Schema/Management/Student/Student.Schema.js";
 import { Branch } from "../../../Schema/Management/Branch/Branch.Schema.js";
- 
-/* =========================
-   UPDATE VALIDATION (INLINE)
-   ========================= */
+
 const studentUpdateValidationSchema = Joi.object({
   fatherName: Joi.string().min(2).optional(),
   motherName: Joi.string().min(2).optional(),
-
-  bloodGroup: Joi.string()
-    .valid("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
-    .optional(),
-
+  bloodGroup: Joi.string().valid("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-").optional(),
   gender: Joi.string().valid("Male", "Female", "Other").optional(),
   dob: Joi.date().optional(),
-
   address: Joi.string().optional(),
 
   contact: Joi.object({
@@ -30,26 +21,16 @@ const studentUpdateValidationSchema = Joi.object({
 
   branch: Joi.string().length(24).optional(),
   assignedTeacher: Joi.array().items(Joi.string().length(24)).optional(),
-
   joiningDate: Joi.date().optional(),
   leavingDate: Joi.date().optional(),
 
-  status: Joi.string()
-    .valid("ACTIVE", "LEFT", "INACTIVE")
-    .optional(),
+  status: Joi.string().valid("ACTIVE", "LEFT", "INACTIVE").optional(),
 });
 
-/* =========================
-   UPDATE STUDENT CONTROLLER
-   ========================= */
 const updateStudent = asyncHandler(async (req, res) => {
   const { studentId } = req.params;
+  if (!studentId) throw new ApiError(400, "Student ID is required");
 
-  if (!studentId) {
-    throw new ApiError(400, "Student ID is required");
-  }
-
-  // 1️⃣ Validate request body
   const { error, value } = studentUpdateValidationSchema.validate(req.body, {
     abortEarly: false,
     stripUnknown: true,
@@ -59,30 +40,29 @@ const updateStudent = asyncHandler(async (req, res) => {
     throw new ApiError(
       400,
       "Validation failed",
-      error.details.map(d => ({
-        field: d.path.join("."),
-        message: d.message,
-      }))
+      error.details.map((d) => ({ field: d.path.join("."), message: d.message }))
     );
   }
 
-  // 2️⃣ Find student
   const student = await Student.findById(studentId);
-  if (!student) {
-    throw new ApiError(404, "Student not found");
-  }
+  if (!student) throw new ApiError(404, "Student not found");
 
-  // 3️⃣ Branch change handling
   const oldBranchId = student.branch?.toString();
   const newBranchId = value.branch?.toString();
 
-  // 4️⃣ Update student fields (PARTIAL UPDATE)
-  Object.assign(student, value);
+  // Deep merge for contact and avoid later overwrite by Object.assign
+  const { contact, ...rest } = value;
+  if (contact) {
+    student.contact = {
+      ...(student.contact || {}),
+      ...contact,
+    };
+  }
+
+  Object.assign(student, rest);
   await student.save();
 
-  // 5️⃣ If branch changed → update Branch collection
   if (newBranchId && newBranchId !== oldBranchId) {
-    // remove from old branch
     if (oldBranchId) {
       await Branch.updateOne(
         { _id: oldBranchId },
@@ -90,17 +70,20 @@ const updateStudent = asyncHandler(async (req, res) => {
       );
     }
 
-    // add to new branch
     await Branch.updateOne(
       { _id: newBranchId },
       { $addToSet: { students: student._id } }
     );
   }
 
-  // 6️⃣ Response
+  // Sanitize sensitive fields before returning
+  const result = student.toObject ? student.toObject() : { ...student };
+  if (result.password) delete result.password;
+  if (result.__v !== undefined) delete result.__v;
+
   return successResponse(res, {
     message: "Student updated successfully",
-    data: student,
+    data: result,
   });
 });
 

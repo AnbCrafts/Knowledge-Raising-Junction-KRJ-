@@ -35,6 +35,10 @@ const getStudents = asyncHandler(async (req, res) => {
     order = "desc",
   } = value;
 
+  // Coerce pagination values to numbers
+  const pageNum = Number.isFinite(Number(page)) && Number(page) > 0 ? parseInt(page, 10) : 1;
+  const limitNum = Number.isFinite(Number(limit)) && Number(limit) > 0 ? parseInt(limit, 10) : 20;
+
   // 2️⃣ Build query (same as Branch)
   const query = {};
 
@@ -49,7 +53,7 @@ const getStudents = asyncHandler(async (req, res) => {
   }
 
   // 3️⃣ Pagination & sorting
-  const skip = (page - 1) * limit;
+  const skip = (pageNum - 1) * limitNum;
   const sortOrder = order === "asc" ? 1 : -1;
 
   // 4️⃣ Fetch data + count
@@ -60,19 +64,26 @@ const getStudents = asyncHandler(async (req, res) => {
       .populate("idCard", "idNumber status")
       .sort({ [sortBy]: sortOrder })
       .skip(skip)
-      .limit(limit)
+      .limit(limitNum)
       .lean(),
     Student.countDocuments(query),
   ]);
 
   // 5️⃣ Response
+  // Sanitize students (remove sensitive/internal fields)
+  const sanitizedStudents = (students || []).map((s) => {
+    if (s.password) delete s.password;
+    if (s.__v !== undefined) delete s.__v;
+    return s;
+  });
+
   return successResponse(res, {
     message: "Students fetched successfully",
     data: {
       total,
-      page,
-      limit,
-      students,
+      page: pageNum,
+      limit: limitNum,
+      students: sanitizedStudents,
     },
   });
 });

@@ -22,9 +22,14 @@ const getSingleStudent = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Student not found");
   }
 
+  // Sanitize sensitive fields before returning
+  const result = student && student.toObject ? student.toObject() : { ...(student || {}) };
+  if (result.password) delete result.password;
+  if (result.__v !== undefined) delete result.__v;
+
   return successResponse(res, {
     message: "Student fetched successfully",
-    data: student,
+    data: result,
   });
 });
 
